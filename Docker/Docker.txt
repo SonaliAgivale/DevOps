@@ -1,0 +1,123 @@
+Docker Installation:
+$ sudo apt-get update -y
+$ sudo apt-get upgrade -y
+$  sudo apt-get remove docker docker-engine docker.io containerd runc
+$  sudo apt install docker.io
+$  sudo systemctl start docker
+$  sudo systemctl status docker
+$  sudo systemctl enable docker
+$ sudo systemctl status docker
+$ docker –version
+---------------------------------------------------------------------------
+Creating database
+mkdir database 
+cd database
+sudo nano Dockerfile
+FROM  mysql
+ENV MYSQL_DATABASE db_test
+ENV MYSQL_ROOT_PASSWORD Prarthana
+ENV MYSQL_USER Prarthana
+ENV MYSQL_PASSWORD Prarthana
+EXPOSE 3306
+
+sudo docker build -t database:database .
+-----------------------------------------------------------------------------
+====for backend=====
+mkdir backend
+cd backend
+*Note:Before git cloning you have to make changes in settings.py file inside git repository
+1)give the name of database(what you give in dockerfile)
+2)user
+3)password: (make root and mysql password same so you will not get confuse)
+4)Host: database
+5)port no: (no which is expose)
+
+git clone https://github.com/Prarthana-git/new_chatapp.gi
+sudo cp new_chatapp/requirements.txt .
+sudo nano Dockerfile
+FROM python:3.6
+RUN apt-get update
+RUN apt-get install --yes python3-pip
+RUN useradd -ms /bin/bash ubuntu
+USER ubuntu:ubuntu
+WORKDIR /new_chatapp/
+COPY requirements.txt /new_chatapp/
+RUN pip3 install -r requirements.txt
+RUN pip3 install mysqlclient
+EXPOSE 8000
+WORKDIR /new_chatapp/fundoo/
+COPY /new_chatapp/fundoo/ /new_chatapp/fundoo/
+CMD python3 manage.py migrate
+ENTRYPOINT  python3 manage.py runserver 0.0.0.0:8000
+
+sudo docker build -t backend:backend .
+------------------------------------------------------------------------------------
+====for frontend====
+mkdir frontend
+cd frontend
+sudo nano nginx.conf
+	server {
+	listen 80;
+	server_name _default;
+	#location = /favicon.ico { access_log off; log_not_found off; }
+	location /static/ {
+	root /new_chatapp/fundoo;
+	}
+	location / {
+	include proxy_params;
+	proxy_pass http://backendcontainerid:8000;
+	}
+	}
+
+FROM ubuntu
+RUN apt-get update
+RUN apt-get install -y nginx
+COPY nginx.conf /etc/nginx/sites-available/fundoo
+RUN ln -s /etc/nginx/sites-available/fundoo /etc/nginx/sites-enabled
+RUN rm -rf /etc/nginx/sites-enabled/default
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+
+sudo docker build -t frontend:frontend_server .
+-----------------------------------------------------------------------------------------------
+For normal production (on a server), use the default daemon on; directive so the Nginx server will start in the background. In this way Nginx and other services are running and talking to each other. One server runs many services.
+
+For Docker containers (or for debugging), the daemon off; directive tells Nginx to stay in the foreground. For containers this is useful as best practice is for one container = one process. One server (container) has only one service.
+---------------------------------------------------------------------------------------------
+We use the -d flag to detach the container from our terminal and run it in the background.
+$sudo docker images
+frontend     frontend_server   ee7ed02e997f   17 minutes ago   168MB
+backend      backend           2146dcd51066   4 hours ago      965MB
+database     database          fcff2aa73258   5 hours ago      524MB
+Creating Docker Container:
+	sudo docker run -it --name database -d fcff2aa73258
+	sudo docker run -it --name backend -p 8000:8000 --link database -d d328ba8d2158
+check on webpage  publicip:8000
+	sudo docker run -it --name frontend -p 80:80 --link backend -d 693fd146f3df 
+	sudo docker ps
+	to get inside container
+	sudo docker exec -it containerName/contaierID /bin/bash
+-------------------------------------------------------------------------------------------------
+
+   docker run -d --name database_container database_image
+   While Creating backend_container u have to link it to database_container
+    docker run -d --name backend_container --link database_container backend_image
+   While Creating frontend_container u have to link it to backend_container and also to localhost
+    docker run -d --name frontend_container -p 80:80 --link backend_container frontend_image
+-------------------------------------------------------------------------------------------------
+to stop container
+sudo docker stop container_name
+
+to delete container
+sudo docker rm container_name
+
+to delete docker image 
+sudo docker rmi image_id
+
+to start container 
+sudo docker start container_name
+
+to delete cache or unwanted images
+sudo docker system prune
+
+
